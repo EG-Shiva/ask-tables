@@ -1,0 +1,13 @@
+region,product,amount,units,month
+North,Widget,1200,40,Jan
+North,Gadget,800,20,Jan
+South,Widget,950,30,Jan
+South,Gadget,1100,25,Jan
+East,Widget,700,22,Jan
+East,Gadget,650,18,Jan
+West,Widget,1500,50,Jan
+West,Gadget,900,28,Jan
+North,Widget,1300,42,Feb
+South,Gadget,1250,30,Feb
+East,Widget,780,24,Feb
+West,Gadget,980,29,Feb

@@ -1,0 +1,11 @@
+employee_id,name,department,salary,location
+E01,Asha,Engineering,92000,Bengaluru
+E02,Rohan,Sales,78000,Mumbai
+E03,Meera,Engineering,101000,Hyderabad
+E04,Vikram,HR,72000,Delhi
+E05,Nina,Sales,81000,Bengaluru
+E06,Arjun,Finance,88000,Mumbai
+E07,Priya,Engineering,97000,Pune
+E08,Kabir,Finance,85000,Delhi
+E09,Isha,HR,70000,Hyderabad
+E10,Dev,Sales,76000,Pune
