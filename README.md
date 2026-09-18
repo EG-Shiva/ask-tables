@@ -2,12 +2,15 @@
 
 Plain-English analytics over multiple CSV/Excel files, with charts.
 
+**Live demo:** https://darwinbox-fde-data-qa.vercel.app  
+**Source (public):** https://github.com/EG-Shiva/darwinbox-fde-data-qa  
+**Write-up:** [APPROACH.md](./APPROACH.md)
+
 **Delta vs raw AI chat:** the model (optional) only helps draft a **query plan**. Aggregations and joins run **locally in the browser**, so totals are not hallucinated.
 
 ## Quick start
 
 ```bash
-cd data-qa
 npm install
 npm run dev
 ```
@@ -54,7 +57,3 @@ Copy `.env.example` → `.env.local`.
 - `npm run dev` — local demo
 - `npm run build` — production build
 - `npm run preview` — preview build
-
-## Write-up
-
-See [APPROACH.md](./APPROACH.md).
