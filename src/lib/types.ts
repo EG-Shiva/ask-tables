@@ -15,6 +15,7 @@ export interface DataTable {
   id: string;
   name: string;
   fileName: string;
+  sheetName: string;
   rows: Record<string, unknown>[];
   columns: ColumnProfile[];
   rowCount: number;

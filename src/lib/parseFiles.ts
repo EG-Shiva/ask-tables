@@ -85,11 +85,13 @@ function normalizeRows(raw: Record<string, unknown>[]): Record<string, unknown>[
 function tableFromRows(fileName: string, sheetName: string, rows: Record<string, unknown>[]): DataTable {
   const cleaned = normalizeRows(rows).filter((r) => Object.values(r).some((v) => v !== null && v !== ''));
   const base = fileName.replace(/\.[^.]+$/, '');
-  const name = sheetName && sheetName !== 'Sheet1' ? `${base} · ${sheetName}` : base;
+  const isDefaultSheet = !sheetName || sheetName === 'Sheet1' || sheetName === 'main';
+  const name = isDefaultSheet ? base : `${base} · ${sheetName}`;
   return {
     id: `${fileName}::${sheetName || 'main'}::${Math.random().toString(36).slice(2, 8)}`,
     name,
     fileName,
+    sheetName: sheetName || 'main',
     rows: cleaned,
     columns: profileColumns(cleaned),
     rowCount: cleaned.length,
