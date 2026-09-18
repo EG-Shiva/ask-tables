@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   Bar,
   BarChart,
@@ -122,29 +122,80 @@ function ChartBlock({ result }: { result: QueryResult }) {
   );
 }
 
-function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
+function PreviewTable({ rows, title }: { rows: Record<string, unknown>[]; title?: string }) {
   if (!rows.length) return null;
   const cols = Object.keys(rows[0]);
   return (
-    <div className="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            {cols.map((c) => (
-              <th key={c}>{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.slice(0, 25).map((row, i) => (
-            <tr key={i}>
+    <div className="table-block">
+      {title && <p className="table-title">{title}</p>}
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
               {cols.map((c) => (
-                <td key={c}>{String(row[c] ?? '')}</td>
+                <th key={c}>{c}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.slice(0, 25).map((row, i) => (
+              <tr key={i}>
+                {cols.map((c) => (
+                  <td key={c} title={String(row[c] ?? '')}>
+                    {String(row[c] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AnswerCard({
+  message,
+  isLatest,
+}: {
+  message: ChatMessage;
+  isLatest: boolean;
+}) {
+  const result = message.result;
+  if (!result) {
+    return <p className="bubble-text">{message.text}</p>;
+  }
+
+  const intentLabel =
+    result.plan.intent === 'describe'
+      ? 'File profile'
+      : result.plan.intent === 'compare' || result.plan.intent === 'join_compare'
+        ? 'Comparison'
+        : result.plan.intent === 'trend'
+          ? 'Trend'
+          : result.plan.intent === 'filter'
+            ? 'Filtered rows'
+            : 'Answer';
+
+  return (
+    <div className={`answer-card ${isLatest ? 'latest' : ''}`}>
+      <div className="answer-head">
+        <span className="answer-badge">{intentLabel}</span>
+        {isLatest && <span className="answer-live">New</span>}
+      </div>
+      <p className="answer-summary">{result.answerText}</p>
+      <ChartBlock result={result} />
+      <PreviewTable
+        rows={result.tablePreview}
+        title={result.plan.intent === 'describe' ? 'Columns' : 'Results'}
+      />
+      <details className="plan-details">
+        <summary>
+          How this was computed · {result.plan.source}
+          {result.warnings.length ? ` · ${result.warnings.length} warning(s)` : ''}
+        </summary>
+        <pre>{JSON.stringify(result.plan, null, 2)}</pre>
+      </details>
     </div>
   );
 }
@@ -156,9 +207,18 @@ export default function App() {
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [asking, setAsking] = useState(false);
+  const answersRef = useRef<HTMLDivElement | null>(null);
+  const latestRef = useRef<HTMLDivElement | null>(null);
 
   const totalRows = useMemo(() => tables.reduce((n, t) => n + t.rowCount, 0), [tables]);
   const examples = useMemo(() => buildExamples(tables), [tables]);
+
+  useEffect(() => {
+    if (!messages.length) return;
+    const last = messages[messages.length - 1];
+    if (last.role !== 'assistant') return;
+    latestRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [messages]);
 
   async function onFiles(fileList: FileList | null) {
     if (!fileList?.length) return;
@@ -186,6 +246,7 @@ export default function App() {
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', text };
     setMessages((m) => [...m, userMsg]);
     setQuestion('');
+    answersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     try {
       const plan = await buildPlan(text, tables);
       const result = executePlan(tables, plan);
@@ -209,6 +270,8 @@ export default function App() {
     e.preventDefault();
     void ask(question);
   }
+
+  const latestId = messages.length ? messages[messages.length - 1].id : null;
 
   return (
     <div className="app">
@@ -318,25 +381,24 @@ export default function App() {
           </button>
         </form>
 
-        <div className="chat">
-          {messages.length === 0 && (
-            <p className="empty">Answers show here with the query plan and a chart when it helps.</p>
+        <div className="chat" ref={answersRef}>
+          {asking && <p className="status-line">Working on your question…</p>}
+          {messages.length === 0 && !asking && (
+            <p className="empty">Answers show here right after you ask — with a short summary, table, and chart when useful.</p>
           )}
           {messages.map((msg) => (
-            <div key={msg.id} className={`bubble ${msg.role}`}>
-              <p className="bubble-text">{msg.text}</p>
-              {msg.result && (
-                <div className="result">
-                  <details open>
-                    <summary>
-                      Query plan · {msg.result.plan.source}
-                      {msg.result.warnings.length ? ` · ${msg.result.warnings.length} warning(s)` : ''}
-                    </summary>
-                    <pre>{JSON.stringify(msg.result.plan, null, 2)}</pre>
-                  </details>
-                  <ChartBlock result={msg.result} />
-                  <PreviewTable rows={msg.result.tablePreview} />
-                </div>
+            <div
+              key={msg.id}
+              className={`bubble ${msg.role}`}
+              ref={msg.id === latestId && msg.role === 'assistant' ? latestRef : undefined}
+            >
+              {msg.role === 'user' ? (
+                <p className="bubble-text">
+                  <span className="you-label">You</span>
+                  {msg.text}
+                </p>
+              ) : (
+                <AnswerCard message={msg} isLatest={msg.id === latestId} />
               )}
             </div>
           ))}

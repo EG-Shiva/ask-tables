@@ -126,17 +126,23 @@ function aggregate(
 }
 
 function describeTable(table: DataTable): QueryResult {
-  const lines = [
-    `**${table.name}** — ${table.rowCount} rows, ${table.columns.length} columns.`,
-    '',
-    ...table.columns.map((c) => {
-      const stats =
-        c.type === 'number' && c.mean !== undefined
-          ? ` min=${c.min}, max=${c.max}, mean=${Number(c.mean.toFixed(2))}`
-          : ` samples: ${c.sampleValues.join(', ') || '—'}`;
-      return `- \`${c.name}\` (${c.type}, ${c.uniqueCount} unique, ${c.nullCount} empty)${stats}`;
-    }),
-  ];
+  const preview = table.columns.map((c) => {
+    const row: Record<string, unknown> = {
+      Column: c.name,
+      Type: c.type,
+      Unique: c.uniqueCount,
+      Empty: c.nullCount,
+      Samples: c.sampleValues.slice(0, 3).join(', ') || '—',
+    };
+    if (c.type === 'number' && c.mean !== undefined) {
+      row.Min = c.min;
+      row.Max = c.max;
+      row.Mean = Number(c.mean.toFixed(2));
+      row.Samples = '—';
+    }
+    return row;
+  });
+
   return {
     plan: {
       intent: 'describe',
@@ -145,8 +151,8 @@ function describeTable(table: DataTable): QueryResult {
       source: 'heuristic',
       chart: 'none',
     },
-    answerText: lines.join('\n'),
-    tablePreview: table.rows.slice(0, 8),
+    answerText: `${table.name} has ${table.rowCount.toLocaleString()} rows and ${table.columns.length} columns.`,
+    tablePreview: preview,
     warnings: [],
   };
 }
@@ -200,7 +206,7 @@ function joinCompare(
       source: 'heuristic',
       chart: 'bar',
     },
-    answerText: `Compared **${left.name}** vs **${right.name}** on \`${leftKey}\`/\`${rightKey}\`.\nMatched keys: **${matched}** of ${left.rowCount} left rows.`,
+    answerText: `Compared ${left.name} vs ${right.name} on ${leftKey} / ${rightKey}. Matched ${matched} of ${left.rowCount} left rows.`,
     tablePreview: preview.slice(0, 50),
     chartData,
     chartType: 'bar',
@@ -273,15 +279,9 @@ export function executePlan(tables: DataTable[], plan: QueryPlan): QueryResult {
       }
     }
 
-    const lines = preview.slice(0, 20).map((r) =>
-      Object.entries(r)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(', '),
-    );
-
     return {
       plan,
-      answerText: `Compared across **${selected.map((t) => t.name).join(', ')}** (local execution):\n\n${lines.map((l) => `- ${l}`).join('\n')}`,
+      answerText: `Compared across ${selected.map((t) => t.name).join(', ')}.`,
       tablePreview: preview.slice(0, 50),
       chartData,
       chartType: plan.chart && plan.chart !== 'none' ? plan.chart : 'bar',
@@ -317,25 +317,17 @@ export function executePlan(tables: DataTable[], plan: QueryPlan): QueryResult {
   if (plan.intent === 'filter' && !plan.metrics?.length) {
     return {
       plan,
-      answerText: `Found **${filtered.length}** rows in **${table.name}** after filters.`,
+      answerText: `Found ${filtered.length} rows in ${table.name} after filters.`,
       tablePreview: filtered.slice(0, 50),
       warnings,
     };
   }
 
   const { preview, chartData } = aggregate(filtered, metrics, groupBy);
-  const summary = preview
-    .slice(0, 15)
-    .map((r) =>
-      Object.entries(r)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(', '),
-    )
-    .join('\n');
 
   return {
     plan,
-    answerText: `Result on **${table.name}** (${filtered.length} rows after filters):\n\n\`\`\`\n${summary}\n\`\`\`\n\n_${plan.explanation}_`,
+    answerText: `Result on ${table.name} (${filtered.length.toLocaleString()} rows after filters). ${plan.explanation}`,
     tablePreview: preview.slice(0, 50),
     chartData: plan.chart === 'none' ? undefined : chartData.slice(0, 40),
     chartType: plan.chart && plan.chart !== 'none' ? plan.chart : groupBy?.length ? 'bar' : 'bar',
