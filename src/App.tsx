@@ -212,20 +212,35 @@ export default function App() {
 
   return (
     <div className="app">
+      <div className="topbar">
+        <div className="brand">
+          <div className="brand-mark" aria-hidden>
+            A
+          </div>
+          <div className="brand-text">
+            <strong>AskTables</strong>
+            <span>Plain-English spreadsheet Q&amp;A</span>
+          </div>
+        </div>
+      </div>
+
       <header className="hero">
-        <p className="eyebrow">AskTables</p>
+        <p className="eyebrow">Upload · Ask · Chart</p>
         <h1>Ask your spreadsheets</h1>
         <p className="lede">
-          Upload CSV/Excel files, ask questions in plain English, get clear answers and charts.
-          Optional AI only drafts the query plan — numbers are computed in your browser.
+          Drop CSV or Excel files, ask in plain English, get clear answers and charts.
+          Optional AI only drafts the plan — totals are computed in your browser.
         </p>
       </header>
 
       <section className="panel upload-panel">
         <div className="panel-head">
-          <h2>1. Upload files</h2>
+          <h2>
+            <span className="step">1</span>
+            Upload files
+          </h2>
           <span className="meta">
-            {tables.length} file{tables.length === 1 ? '' : 's'} · {totalRows} rows
+            {tables.length} file{tables.length === 1 ? '' : 's'} · {totalRows.toLocaleString()} rows
           </span>
         </div>
         <label className={`drop ${busy ? 'busy' : ''}`}>
@@ -251,13 +266,14 @@ export default function App() {
                   </button>
                 </header>
                 <p>
-                  {t.rowCount} rows · {t.columns.length} columns
+                  {t.rowCount.toLocaleString()} rows · {t.columns.length} columns
                   {t.fileName !== t.name ? ` · ${t.fileName}` : ''}
                 </p>
                 <ul>
                   {t.columns.slice(0, 8).map((c) => (
                     <li key={c.name}>
-                      <code>{c.name}</code> <em>{c.type}</em>
+                      <code>{c.name}</code>
+                      <em className={`type-pill ${c.type}`}>{c.type}</em>
                     </li>
                   ))}
                 </ul>
@@ -265,12 +281,17 @@ export default function App() {
             ))}
           </div>
         )}
-        <p className="hint">Upload one or more CSV/Excel files, then ask questions below. Sample files are in <code>sample-data/</code>.</p>
+        <p className="hint">
+          Upload one or more CSV/Excel files, then ask questions below. Sample files are in <code>sample-data/</code>.
+        </p>
       </section>
 
       <section className="panel ask-panel">
         <div className="panel-head">
-          <h2>2. Ask in plain English</h2>
+          <h2>
+            <span className="step">2</span>
+            Ask in plain English
+          </h2>
         </div>
         <div className="examples">
           {examples.map((ex) => (
@@ -299,7 +320,7 @@ export default function App() {
 
         <div className="chat">
           {messages.length === 0 && (
-            <p className="empty">Answers appear here with a visible plan (heuristic or LLM) and chart when useful.</p>
+            <p className="empty">Answers show here with the query plan and a chart when it helps.</p>
           )}
           {messages.map((msg) => (
             <div key={msg.id} className={`bubble ${msg.role}`}>
@@ -324,8 +345,7 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          Delta design: natural language → structured plan → deterministic local execution. Optional open LLM via{' '}
-          <code>VITE_LLM_*</code> only helps plan, never invents totals.
+          Plan locally (or with an optional open LLM) → execute in-browser. Numbers are never invented by the model.
         </p>
       </footer>
     </div>
