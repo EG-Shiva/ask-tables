@@ -1,12 +1,11 @@
-# Data Q&A — Darwinbox FDE take-home
+# AskTables
 
-Plain-English analytics over multiple CSV/Excel files, with charts.
+Upload CSV/Excel files and ask analytical questions in plain English. Get answers, previews, and charts.
 
-**Live demo:** https://darwinbox-fde-data-qa.vercel.app  
-**Source (public):** https://github.com/EG-Shiva/darwinbox-fde-data-qa  
-**Write-up:** [APPROACH.md](./APPROACH.md)
+**Live demo:** https://ask-tables.vercel.app  
+**Source:** https://github.com/EG-Shiva/ask-tables  
 
-**Delta vs raw AI chat:** the model (optional) only helps draft a **query plan**. Aggregations and joins run **locally in the browser**, so totals are not hallucinated.
+**How it stays accurate:** optional AI only helps draft a **query plan**. Aggregations and joins run **locally in the browser**, so totals are not hallucinated.
 
 ## Quick start
 
@@ -24,14 +23,14 @@ Upload files from `sample-data/`, then try:
 - `Compare the two sales files`
 - `Average salary by department` (employees.csv)
 
-## Acceptance criteria map
+## Features
 
-| Requirement | How |
+| Capability | How |
 |---|---|
 | Multi-file upload | Multiple CSV/Excel in one session |
 | Cross-file analysis | Side-by-side aggregates + join-compare on shared keys |
-| Visual insights | Bar / line / pie via Recharts when the plan asks for a chart |
-| Delta on AI | Heuristic (default) or optional LLM → JSON plan → deterministic `queryEngine` |
+| Visual insights | Bar / line / pie via Recharts when useful |
+| Plan → execute | Heuristic (default) or optional LLM → JSON plan → deterministic engine |
 
 ## Optional open LLM (not required)
 
@@ -57,3 +56,7 @@ Copy `.env.example` → `.env.local`.
 - `npm run dev` — local demo
 - `npm run build` — production build
 - `npm run preview` — preview build
+
+## Write-up
+
+See [APPROACH.md](./APPROACH.md).

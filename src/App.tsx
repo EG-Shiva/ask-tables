@@ -171,11 +171,11 @@ export default function App() {
   return (
     <div className="app">
       <header className="hero">
-        <p className="eyebrow">Darwinbox FDE take-home</p>
-        <h1>Data Q&amp;A</h1>
+        <p className="eyebrow">AskTables</p>
+        <h1>Ask your spreadsheets</h1>
         <p className="lede">
-          Upload CSV/Excel files, ask questions in plain English, get local answers and charts.
-          AI (optional) only drafts the query plan — numbers are computed in your browser.
+          Upload CSV/Excel files, ask questions in plain English, get clear answers and charts.
+          Optional AI only drafts the query plan — numbers are computed in your browser.
         </p>
       </header>
 
