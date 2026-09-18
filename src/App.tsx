@@ -21,13 +21,54 @@ import './App.css';
 
 const COLORS = ['#0f766e', '#c2410c', '#1d4ed8', '#a16207', '#be123c', '#7c3aed'];
 
-const EXAMPLES = [
-  'Describe the first file',
-  'Total sales by region',
-  'Average amount across all files',
-  'Compare the two sales files',
-  'Count rows by department',
-];
+function pickNumeric(table: DataTable) {
+  return table.columns.find((c) => c.type === 'number')?.name;
+}
+
+function pickCategory(table: DataTable) {
+  return table.columns.find(
+    (c) => c.type === 'string' && c.uniqueCount > 1 && c.uniqueCount <= Math.max(25, Math.floor(table.rowCount / 2) || 25),
+  )?.name;
+}
+
+/** Suggestion chips that match whatever files are currently loaded. */
+function buildExamples(tables: DataTable[]): string[] {
+  if (!tables.length) return [];
+
+  const out: string[] = [];
+  const first = tables[0];
+  out.push(`Describe ${first.name}`);
+
+  const num = pickNumeric(first);
+  const cat = pickCategory(first);
+  if (num && cat) out.push(`Total ${num} by ${cat}`);
+  else if (num) out.push(`Sum of ${num}`);
+  else out.push(`Count rows in ${first.name}`);
+
+  if (tables.length > 1) {
+    const nums = tables.map((t) => pickNumeric(t)).filter(Boolean);
+    if (nums.length >= 2 && new Set(nums).size === 1) {
+      out.push(`Average ${nums[0]} across all files`);
+    } else {
+      out.push('Compare aggregates across all files');
+    }
+    out.push(`Compare ${tables[0].name} and ${tables[1].name}`);
+  }
+
+  if (tables.length === 1 && cat) {
+    out.push(`Count rows by ${cat}`);
+  }
+
+  // Second file–specific tip when useful
+  if (tables.length >= 2) {
+    const second = tables[1];
+    const n2 = pickNumeric(second);
+    const c2 = pickCategory(second);
+    if (n2 && c2) out.push(`Total ${n2} by ${c2} in ${second.name}`);
+  }
+
+  return [...new Set(out)].slice(0, 5);
+}
 
 function ChartBlock({ result }: { result: QueryResult }) {
   if (!result.chartData?.length || !result.chartType) return null;
@@ -117,6 +158,7 @@ export default function App() {
   const [asking, setAsking] = useState(false);
 
   const totalRows = useMemo(() => tables.reduce((n, t) => n + t.rowCount, 0), [tables]);
+  const examples = useMemo(() => buildExamples(tables), [tables]);
 
   async function onFiles(fileList: FileList | null) {
     if (!fileList?.length) return;
@@ -232,7 +274,7 @@ export default function App() {
           <h2>2. Ask in plain English</h2>
         </div>
         <div className="examples">
-          {EXAMPLES.map((ex) => (
+          {examples.map((ex) => (
             <button key={ex} type="button" disabled={!tables.length || asking} onClick={() => void ask(ex)}>
               {ex}
             </button>
@@ -242,7 +284,13 @@ export default function App() {
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder={tables.length ? 'e.g. total revenue by region across both files' : 'Upload files first'}
+            placeholder={
+              tables.length
+                ? examples[1]
+                  ? `e.g. ${examples[1].toLowerCase()}`
+                  : 'Ask a question about your files'
+                : 'Upload files first'
+            }
             disabled={!tables.length || asking}
           />
           <button type="submit" disabled={!tables.length || asking || !question.trim()}>
