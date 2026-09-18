@@ -245,13 +245,14 @@ export default function App() {
             {tables.map((t) => (
               <article key={t.id} className="file-card">
                 <header>
-                  <h3>{t.name}</h3>
+                  <h3 title={t.name}>{t.name}</h3>
                   <button type="button" onClick={() => setTables((prev) => prev.filter((x) => x.id !== t.id))}>
                     Remove
                   </button>
                 </header>
                 <p>
                   {t.rowCount} rows · {t.columns.length} columns
+                  {t.fileName !== t.name ? ` · ${t.fileName}` : ''}
                 </p>
                 <ul>
                   {t.columns.slice(0, 8).map((c) => (
@@ -264,9 +265,7 @@ export default function App() {
             ))}
           </div>
         )}
-        <p className="hint">
-          Sample files are in <code>sample-data/</code> — upload both sales CSVs to try cross-file compare.
-        </p>
+        <p className="hint">Upload one or more CSV/Excel files, then ask questions below. Sample files are in <code>sample-data/</code>.</p>
       </section>
 
       <section className="panel ask-panel">
