@@ -572,9 +572,10 @@ body {
 
 .answer-summary {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  line-height: 1.35;
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .table-block {

@@ -64,8 +64,20 @@ function tablesFromQuestion(q: string, tables: DataTable[]): DataTable[] {
       q.includes(t.name.toLowerCase().replace(/\s+/g, '')),
   );
   if (hits.length) return hits;
-  if (/\b(all|both|across|compare|vs|versus|each file)\b/.test(q) && tables.length > 1) return tables;
+  if (
+    /\b(all|both|across|compare|vs|versus|each file|these files|these|them|uploaded)\b/.test(q) &&
+    tables.length > 1
+  ) {
+    return tables;
+  }
   return tables.slice(0, 1);
+}
+
+function isAboutQuestion(q: string): boolean {
+  return /\b(describe|schema|columns|profile|overview|summary|summarize)\b/.test(q) ||
+    /\bwhat\b.*\b(about|in|is|are)\b/.test(q) ||
+    /\b(tell me about|what(?:'s| is| are) (?:this|these|the) (?:file|files|data|dataset|sheet|sheets))\b/.test(q) ||
+    /\bwhat (?:are|is) (?:these|this|the) files?\b/.test(q);
 }
 
 /** Deterministic NL → plan. This is the "delta" layer: AI (optional) only proposes structure; numbers come from the engine. */
@@ -84,11 +96,15 @@ export function planFromHeuristics(question: string, tables: DataTable[]): Query
     };
   }
 
-  if (/\b(describe|schema|columns|profile|what.*(in|about)|overview)\b/.test(q)) {
+  if (isAboutQuestion(q)) {
+    const aboutAll =
+      tables.length > 1 &&
+      (/\b(these|all|both|uploaded|files)\b/.test(q) || selected.length > 1);
+    const targets = aboutAll ? tables : selected;
     return {
       intent: 'describe',
-      tables: [primary.name],
-      explanation: 'Describe schema and stats for the selected file.',
+      tables: targets.map((t) => t.name),
+      explanation: 'Human-readable overview from file names, sheets, and columns (local).',
       source: 'heuristic',
       chart: 'none',
     };

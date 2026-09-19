@@ -125,33 +125,132 @@ function aggregate(
   return { preview, chartData };
 }
 
-function describeTable(table: DataTable): QueryResult {
-  const preview = table.columns.map((c) => {
-    const row: Record<string, unknown> = {
-      Column: c.name,
-      Type: c.type,
-      Unique: c.uniqueCount,
-      Empty: c.nullCount,
-      Samples: c.sampleValues.slice(0, 3).join(', ') || '—',
+function inferThemes(columns: string[]): string[] {
+  const themes: string[] = [];
+  const blob = columns.join(' | ');
+  if (/reviewer|trainer|employee|author|owner|name|person|user/i.test(blob)) themes.push('people / owners');
+  if (/status|progress|completed|rework|state|phase/i.test(blob)) themes.push('status / progress');
+  if (/salary|pay|premium|amount|revenue|cost|price|budget|fee|gross/i.test(blob)) themes.push('money / costs');
+  if (/hospital|icu|clinic|patient|health|org/i.test(blob)) themes.push('operations / healthcare');
+  if (/github|url|link|repo|source/i.test(blob)) themes.push('links / references');
+  if (/region|location|city|country/i.test(blob)) themes.push('location');
+  if (/product|sku|item|units|sales/i.test(blob)) themes.push('products / sales');
+  if (/date|day|month|completion|\d{1,2}\/\d{1,2}/i.test(blob)) themes.push('dates / timeline');
+  if (/department|team|role/i.test(blob)) themes.push('teams / roles');
+  return [...new Set(themes)].slice(0, 4);
+}
+
+function niceFileLabel(table: DataTable): string {
+  return table.fileName.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function humanAboutOne(table: DataTable): string {
+  const label = niceFileLabel(table);
+  const sheetBit =
+    table.sheetName && table.sheetName !== 'main' && table.sheetName !== 'Sheet1'
+      ? ` (sheet “${table.sheetName}”)`
+      : '';
+  const cols = table.columns.map((c) => c.name).filter((n) => !/^__EMPTY/i.test(n));
+  const themes = inferThemes(cols);
+  const topCols = cols.slice(0, 6).join(', ');
+  const themeBit = themes.length ? `It looks focused on ${themes.join(', ')}.` : '';
+  const colBit = topCols
+    ? ` Main fields include ${topCols}${cols.length > 6 ? ', and more' : ''}.`
+    : '';
+
+  return `“${label}”${sheetBit} is a dataset with ${table.rowCount.toLocaleString()} rows and ${table.columns.length} columns. ${themeBit}${colBit}`.replace(
+    /\s+/g,
+    ' ',
+  ).trim();
+}
+
+function describeTables(tables: DataTable[]): QueryResult {
+  if (!tables.length) {
+    return {
+      plan: {
+        intent: 'describe',
+        tables: [],
+        explanation: 'No tables loaded.',
+        source: 'heuristic',
+        chart: 'none',
+      },
+      answerText: 'No files are loaded yet. Upload a CSV/Excel file first.',
+      tablePreview: [],
+      warnings: [],
     };
-    if (c.type === 'number' && c.mean !== undefined) {
-      row.Min = c.min;
-      row.Max = c.max;
-      row.Mean = Number(c.mean.toFixed(2));
-      row.Samples = '—';
+  }
+
+  const byFile = new Map<string, DataTable[]>();
+  for (const t of tables) {
+    const list = byFile.get(t.fileName) || [];
+    list.push(t);
+    byFile.set(t.fileName, list);
+  }
+
+  const paragraphs: string[] = [];
+  if (byFile.size === 1 && tables.length === 1) {
+    paragraphs.push(humanAboutOne(tables[0]));
+  } else if (byFile.size === 1) {
+    const [fileName, sheets] = [...byFile.entries()][0];
+    const label = fileName.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
+    paragraphs.push(
+      `This workbook (“${label}”) has ${sheets.length} sheets: ${sheets.map((s) => s.sheetName).join(', ')}. Together they hold ${sheets.reduce((n, s) => n + s.rowCount, 0).toLocaleString()} rows.`,
+    );
+    for (const s of sheets) {
+      paragraphs.push(humanAboutOne(s));
     }
-    return row;
-  });
+  } else {
+    paragraphs.push(
+      `You uploaded ${byFile.size} files (${tables.length} table${tables.length === 1 ? '' : 's'} including sheets). Here’s what they appear to be about:`,
+    );
+    for (const [, sheets] of byFile) {
+      if (sheets.length === 1) {
+        paragraphs.push(`• ${humanAboutOne(sheets[0])}`);
+      } else {
+        const label = niceFileLabel(sheets[0]);
+        paragraphs.push(
+          `• “${label}” is a multi-sheet workbook (${sheets.map((s) => s.sheetName).join(', ')}).`,
+        );
+        for (const s of sheets) {
+          const themes = inferThemes(s.columns.map((c) => c.name));
+          paragraphs.push(
+            `   – Sheet “${s.sheetName}”: ${s.rowCount.toLocaleString()} rows${themes.length ? `, about ${themes.join(', ')}` : ''}.`,
+          );
+        }
+      }
+    }
+  }
+
+  const preview = tables.flatMap((table) =>
+    table.columns
+      .filter((c) => !/^__EMPTY/i.test(c.name))
+      .slice(0, tables.length > 1 ? 6 : 30)
+      .map((c) => {
+        const row: Record<string, unknown> = {
+          File: table.fileName,
+          Sheet: table.sheetName,
+          Column: c.name,
+          Type: c.type,
+          Samples: c.sampleValues.slice(0, 3).join(', ') || '—',
+        };
+        if (c.type === 'number' && c.mean !== undefined) {
+          row.Min = c.min;
+          row.Max = c.max;
+          row.Mean = Number(c.mean.toFixed(2));
+        }
+        return row;
+      }),
+  );
 
   return {
     plan: {
       intent: 'describe',
-      tables: [table.name],
-      explanation: 'Schema + basic stats from local profiler (no LLM numbers).',
+      tables: tables.map((t) => t.name),
+      explanation: 'Human overview from names + columns; details in the table below.',
       source: 'heuristic',
       chart: 'none',
     },
-    answerText: `${table.name} has ${table.rowCount.toLocaleString()} rows and ${table.columns.length} columns.`,
+    answerText: paragraphs.join('\n\n'),
     tablePreview: preview,
     warnings: [],
   };
@@ -230,7 +329,13 @@ export function executePlan(tables: DataTable[], plan: QueryPlan): QueryResult {
   }
 
   if (plan.intent === 'describe') {
-    return describeTable(selected[0]);
+    const targets =
+      selected.length > 0
+        ? selected
+        : plan.tables
+            .map((name) => findTable(tables, name))
+            .filter((t): t is DataTable => Boolean(t));
+    return describeTables(targets.length ? targets : tables);
   }
 
   if (plan.intent === 'join_compare' && plan.join && selected.length >= 2) {

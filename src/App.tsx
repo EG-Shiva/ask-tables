@@ -205,7 +205,7 @@ function AnswerCard({ message, isLatest }: { message: ChatMessage; isLatest: boo
 
   const intentLabel =
     result.plan.intent === 'describe'
-      ? 'File profile'
+      ? 'Overview'
       : result.plan.intent === 'compare' || result.plan.intent === 'join_compare'
         ? 'Comparison'
         : result.plan.intent === 'trend'
